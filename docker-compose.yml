@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+ litestar-app-db:
+    image: postgres:16.2
+    ports:
+      - "5432:5432"
+    volumes:
+      - litestar-app-db-data:/var/lib/postgresql/data/pgdata
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_SERVER=litestar-app-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=litestar-app
+    restart: always
+    networks:
+      - shared_network
+
+ litestar-app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    depends_on:
+      - litestar-app-db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/src
+    environment:
+      - DATABASE_DSN=postgresql://postgres:password@litestar-app-db:5432/litestar-app
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000", "http://localhost:5000"]
+    command: sh -c "alembic upgrade head && uvicorn --host 0.0.0.0 --log-level debug --port 8000 src.main:app"
+    restart: always
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    driver: bridge
+
+volumes:
+  litestar-app-db-data:
